@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key-Value Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Helper function for making API requests
+    async function apiRequest(url, method = 'GET', body = null) {
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+      
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+
+      const response = await fetch(url, options);
+      return response.ok ? response.json() : Promise.reject('Request failed');
+    }
+
+    // Fetch items and update the UI
+    async function fetchItems() {
+      try {
+        const items = await apiRequest('/items');
+        if (!items.length) {
+          document.getElementById('itemsList').innerHTML = '<p class="text-gray-600">No items found</p>';
+          return;
+        }
+        const itemsList = document.getElementById('itemsList');
+        itemsList.innerHTML = '';
+
+        items.forEach(item => {
+          const itemElement = document.createElement('div');
+          itemElement.classList.add('bg-white', 'p-6', 'border', 'rounded', 'shadow-md', 'my-4', 'transition-transform', 'transform', 'duration-300', 'hover:shadow-lg');
+          itemElement.innerHTML = `
+            <div class="flex justify-between items-center">
+              <div>
+                <strong class="text-lg text-gray-800">${item.key}</strong>
+                <p class="text-sm text-gray-600">${item.value}</p>
+              </div>
+              <button class="ml-4 bg-red-500 text-white p-2 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500" onclick="deleteItem('${item.key}')">
+                Delete
+              </button>
+            </div>
+          `;
+          itemsList.appendChild(itemElement);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    // Add a new item
+    async function addItem(event) {
+      event.preventDefault();
+      const key = document.getElementById('key').value;
+      const value = document.getElementById('value').value;
+
+      try {
+        await apiRequest('/items', 'POST', { key, value });
+        fetchItems();
+        document.getElementById('key').value = '';
+        document.getElementById('value').value = '';
+        showToast('Item added successfully!', 'success');
+      } catch (error) {
+        showToast('Failed to add item', 'error');
+      }
+    }
+
+    // Delete an item
+    async function deleteItem(key) {
+      try {
+        await apiRequest(`/items?key=${key}`, 'DELETE');
+        fetchItems();
+        showToast('Item deleted successfully!', 'success');
+      } catch (error) {
+        showToast('Failed to delete item', 'error');
+      }
+    }
+
+    // Show a toast notification for success/error
+    function showToast(message, type) {
+      const toast = document.createElement('div');
+      toast.classList.add('fixed', 'top-4', 'right-4', 'bg-green-500', 'text-white', 'p-4', 'rounded-lg', 'shadow-lg', 'transition-transform', 'transform', 'duration-300');
+      toast.innerText = message;
+      if (type === 'error') {
+        toast.classList.replace('bg-green-500', 'bg-red-500');
+      }
+
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    window.onload = fetchItems;
+  </script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+  <div class="container mx-auto p-6">
+    <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Key-Value Store</h1>
+
+    <div class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-lg mb-6">
+      <form id="addItemForm" onsubmit="addItem(event)">
+        <div class="mb-4">
+          <label for="key" class="block text-gray-700 font-medium">Key</label>
+          <input type="text" id="key" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+        </div>
+
+        <div class="mb-4">
+          <label for="value" class="block text-gray-700 font-medium">Value</label>
+          <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+        </div>
+
+        <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Add Item</button>
+      </form>
+    </div>
+
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Items List</h2>
+    <div id="itemsList" class="space-y-4">
+      <!-- Items will be listed here -->
+    </div>
+  </div>
+
+</body>
+</html>
