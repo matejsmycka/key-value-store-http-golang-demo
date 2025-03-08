@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"log"
 	"os"
 
@@ -23,11 +24,11 @@ func initDB(dbConnStr string) {
 	}
 
 	sqlStmt := `
-    CREATE TABLE IF NOT EXISTS items (
-        id SERIAL PRIMARY KEY,
-        key TEXT NOT NULL,
-        value TEXT NOT NULL
-    ); `
+	CREATE TABLE IF NOT EXISTS items (
+		id SERIAL PRIMARY KEY,
+		key TEXT NOT NULL,
+		value TEXT NOT NULL
+	); `
 
 	_, err = db.Exec(sqlStmt)
 	if err != nil {
@@ -101,8 +102,13 @@ func deleteItem(c *gin.Context) {
 }
 
 func main() {
-	port := "8080"
-	initDB(os.Getenv("DB_CONN_STR"))
+	port := flag.String("port", "8080", "Port to run the server on")
+	dbConnStr := flag.String("db", os.Getenv("DB_CONN_STR"), "Database connection string")
+	certFile := flag.String("cert", "", "Path to SSL certificate file")
+	keyFile := flag.String("key", "", "Path to SSL key file")
+	flag.Parse()
+
+	initDB(*dbConnStr)
 	log.Println("DB connection initialized")
 	defer db.Close()
 
@@ -112,6 +118,10 @@ func main() {
 	r.GET("/", getIndex)
 	r.DELETE("/items", deleteItem)
 
-	log.Println("Server running on port", port)
-	r.Run(":" + port)
+	log.Println("Server running on port", *port)
+	if *certFile != "" && *keyFile != "" {
+		r.RunTLS(":"+*port, *certFile, *keyFile)
+	} else {
+		r.Run(":" + *port)
+	}
 }
